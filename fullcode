@@ -1,0 +1,516 @@
+import SwiftUI
+
+
+struct ContentView: View {
+    var body: some View {
+        TabView {
+            MultiFunctionPlaygroundView()
+                .tabItem {
+                    Label("Playground", systemImage: "waveform.path.ecg")
+                }
+            FunctionExplorerView()
+                .tabItem {
+                    Label("Explorer", systemImage: "rectangle.stack.fill")
+                }
+            ChallengeTrackView()
+                .tabItem {
+                    Label("Challenges", systemImage: "target")
+                }
+        }
+        .accentColor(.purple)
+        .background(Color(UIColor.systemBackground))
+    }
+}
+
+
+struct MultiFunctionPlaygroundView: View {
+    enum FunctionType: String, CaseIterable, Identifiable {
+        case sin = "sin(x)"
+        case cos = "cos(x)"
+        case tan = "tan(x)"
+        case abs = "abs(x)"
+        case parabola = "x²"
+        case sqrt = "√x"
+        case log = "log(x)"
+
+        var id: String { rawValue }
+
+        func domainRange() -> ClosedRange<Double> {
+            switch self {
+            case .sqrt:
+                return 0...10
+            case .log:
+                return 0.01...10
+            default:
+                return -2 * Double.pi...2 * Double.pi
+            }
+        }
+    }
+
+    @State private var selectedFunction: FunctionType = .sin
+
+    @State private var a: Double = 1.0
+    @State private var f: Double = 1.0
+    @State private var p: Double = 0.0
+    @State private var k: Double = 0.0
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+
+
+                Picker("Function", selection: $selectedFunction) {
+                    ForEach(FunctionType.allCases) { fn in
+                        Text(fn.rawValue).tag(fn)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+
+                GraphViewCustom(
+                    goalFunc: { x in functionValue(x: x, type: selectedFunction, a: 1, f: 1, p: 0, k: 0) },
+                    matchFunc: { x in functionValue(x: x, type: selectedFunction, a: a, f: f, p: p, k: k) },
+                    xRange: selectedFunction.domainRange()
+                )
+                .frame(height: 220)
+                .padding(.horizontal)
+
+                parameterSliders(for: selectedFunction)
+
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Playground")
+        }
+        .onChange(of: selectedFunction) { _ in
+            resetParameters()
+        }
+    }
+
+    func resetParameters() {
+        a = 1.0
+        f = 1.0
+        p = 0.0
+        k = 0.0
+    }
+
+    func functionValue(x: Double, type: FunctionType, a: Double, f: Double, p: Double, k: Double) -> Double {
+        switch type {
+        case .sin:
+            return a * sin(f * x + p) + k
+        case .cos:
+            return a * cos(f * x + p) + k
+        case .tan:
+            let val = tan(f * x + p)
+            return abs(val) > 10 ? 10 * (val > 0 ? 1 : -1) : a * val + k
+        case .abs:
+            return a * abs(f * x + p) + k
+        case .parabola:
+            return a * pow(f * x + p, 2) + k
+        case .sqrt:
+            let inside = f * x + p
+            return inside < 0 ? 0 : a * sqrt(inside) + k
+        case .log:
+            let inside = f * x + p
+            return inside <= 0 ? 0 : a * log(inside) + k
+        }
+    }
+
+    @ViewBuilder
+    func parameterSliders(for type: FunctionType) -> some View {
+        switch type {
+        case .sin, .cos, .tan:
+            Group {
+                SliderRow(title: "Amplitude (a)", value: $a, range: 0...3)
+                SliderRow(title: "Frequency (f)", value: $f, range: 0...5)
+                SliderRow(title: "Phase Shift (p)", value: $p, range: -Double.pi...Double.pi)
+                SliderRow(title: "Vertical Shift (k)", value: $k, range: -3...3)
+            }
+        case .abs, .parabola:
+            Group {
+                SliderRow(title: "a (vertical scale)", value: $a, range: -3...3)
+                SliderRow(title: "f (horizontal scale)", value: $f, range: -3...3)
+                SliderRow(title: "p (horizontal shift)", value: $p, range: -3...3)
+                SliderRow(title: "k (vertical shift)", value: $k, range: -3...3)
+            }
+        case .sqrt, .log:
+            Group {
+                SliderRow(title: "a (vertical scale)", value: $a, range: 0...3)
+                SliderRow(title: "f (horizontal scale)", value: $f, range: 0...3)
+                SliderRow(title: "p (horizontal shift)", value: $p, range: -3...3)
+                SliderRow(title: "k (vertical shift)", value: $k, range: -3...3)
+            }
+        }
+    }
+}
+
+
+struct FunctionExplorerView: View {
+    enum FunctionType: String, CaseIterable, Identifiable {
+        case sin = "sin(x)"
+        case cos = "cos(x)"
+        case tan = "tan(x)"
+        case abs = "abs(x)"
+        case parabola = "x²"
+        case sqrt = "√x"
+        case log = "log(x)"
+
+        var id: String { rawValue }
+
+        func domainRange() -> ClosedRange<Double> {
+            switch self {
+            case .sqrt:
+                return 0...10
+            case .log:
+                return 0.01...10
+            default:
+                return -2 * Double.pi...2 * Double.pi
+            }
+        }
+    }
+
+    @State private var selectedFunction1: FunctionType = .sin
+    @State private var a1: Double = 1
+    @State private var f1: Double = 1
+    @State private var p1: Double = 0
+    @State private var k1: Double = 0
+
+    @State private var selectedFunction2: FunctionType = .cos
+    @State private var a2: Double = 1
+    @State private var f2: Double = 1
+    @State private var p2: Double = 0
+    @State private var k2: Double = 0
+
+    @State private var showFunc1 = true
+    @State private var showFunc2 = true
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 10) {
+
+
+                HStack {
+                    VStack(spacing: 8) {
+                        Text("Function 1")
+                            .font(.headline)
+                        Picker("Function 1", selection: $selectedFunction1) {
+                            ForEach(FunctionType.allCases) { fn in
+                                Text(fn.rawValue).tag(fn)
+                            }
+                        }
+                        .pickerStyle(.menu)
+
+                        Toggle("Show Function 1", isOn: $showFunc1)
+                            .toggleStyle(.switch)
+                            .padding(.top, 4)
+
+                        parameterSliders(selectedFunction: selectedFunction1, a: $a1, f: $f1, p: $p1, k: $k1)
+                    }
+                    .padding()
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(12)
+
+                    VStack(spacing: 8) {
+                        Text("Function 2")
+                            .font(.headline)
+                        Picker("Function 2", selection: $selectedFunction2) {
+                            ForEach(FunctionType.allCases) { fn in
+                                Text(fn.rawValue).tag(fn)
+                            }
+                        }
+                        .pickerStyle(.menu)
+
+                        Toggle("Show Function 2", isOn: $showFunc2)
+                            .toggleStyle(.switch)
+                            .padding(.top, 4)
+
+                        parameterSliders(selectedFunction: selectedFunction2, a: $a2, f: $f2, p: $p2, k: $k2)
+                    }
+                    .padding()
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(12)
+                }
+                .padding(.horizontal)
+
+                GraphViewMultiple(
+                    functions: [
+                        showFunc1 ? { x in functionValue(x: x, type: selectedFunction1, a: a1, f: f1, p: p1, k: k1) } : nil,
+                        showFunc2 ? { x in functionValue(x: x, type: selectedFunction2, a: a2, f: f2, p: p2, k: k2) } : nil,
+                    ].compactMap { $0 },
+                    colors: [Color.purple, Color.orange],
+                    xRange: unionRanges(
+                        selectedFunction1.domainRange(),
+                        selectedFunction2.domainRange()
+                    )
+                )
+                .frame(height: 250)
+                .padding()
+            }
+            .padding()
+            .navigationTitle("Explorer")
+
+            
+        }
+        
+    }
+
+    func parameterSliders(selectedFunction: FunctionType, a: Binding<Double>, f: Binding<Double>, p: Binding<Double>, k: Binding<Double>) -> some View {
+        switch selectedFunction {
+        case .sin, .cos, .tan:
+            return AnyView(
+                Group {
+                    SliderRow(title: "Amplitude (a)", value: a, range: 0...3)
+                    SliderRow(title: "Frequency (f)", value: f, range: 0...5)
+                    SliderRow(title: "Phase Shift (p)", value: p, range: -Double.pi...Double.pi)
+                    SliderRow(title: "Vertical Shift (k)", value: k, range: -3...3)
+                }
+            )
+        case .abs, .parabola:
+            return AnyView(
+                Group {
+                    SliderRow(title: "a (vertical scale)", value: a, range: -3...3)
+                    SliderRow(title: "f (horizontal scale)", value: f, range: -3...3)
+                    SliderRow(title: "p (horizontal shift)", value: p, range: -3...3)
+                    SliderRow(title: "k (vertical shift)", value: k, range: -3...3)
+                }
+            )
+        case .sqrt, .log:
+            return AnyView(
+                Group {
+                    SliderRow(title: "a (vertical scale)", value: a, range: 0...3)
+                    SliderRow(title: "f (horizontal scale)", value: f, range: 0...3)
+                    SliderRow(title: "p (horizontal shift)", value: p, range: -3...3)
+                    SliderRow(title: "k (vertical shift)", value: k, range: -3...3)
+                }
+            )
+        }
+    }
+
+    func functionValue(x: Double, type: FunctionType, a: Double, f: Double, p: Double, k: Double) -> Double {
+        switch type {
+        case .sin:
+            return a * sin(f * x + p) + k
+        case .cos:
+            return a * cos(f * x + p) + k
+        case .tan:
+            let val = tan(f * x + p)
+            return abs(val) > 10 ? 10 * (val > 0 ? 1 : -1) : a * val + k
+        case .abs:
+            return a * abs(f * x + p) + k
+        case .parabola:
+            return a * pow(f * x + p, 2) + k
+        case .sqrt:
+            let inside = f * x + p
+            return inside < 0 ? 0 : a * sqrt(inside) + k
+        case .log:
+            let inside = f * x + p
+            return inside <= 0 ? 0 : a * log(inside) + k
+        }
+    }
+
+    func unionRanges(_ r1: ClosedRange<Double>, _ r2: ClosedRange<Double>) -> ClosedRange<Double> {
+        let lower = min(r1.lowerBound, r2.lowerBound)
+        let upper = max(r1.upperBound, r2.upperBound)
+        return lower...upper
+    }
+}
+
+
+struct ChallengeTrackView: View {
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 30) {
+                    Text("Graph Match Challenges")
+                        .font(.title2)
+                        .bold()
+                        .padding(.top)
+
+                    ChallengeCard(
+                        title: "Sine Match",
+                        goalFunc: { x in sin(x) },
+                        matchFunc: { a, f, p, x in a * sin(f * x + p) }
+                    )
+
+                    ChallengeCard(
+                        title: "Cosine Match",
+                        goalFunc: { x in cos(x) },
+                        matchFunc: { a, f, p, x in a * cos(f * x + p) }
+                    )
+
+                    ChallengeCard(
+                        title: "Parabola Match",
+                        goalFunc: { x in 0.5 * x * x },
+                        matchFunc: { a, f, p, x in a * pow(x + p, 2) + f }
+                    )
+
+                    ChallengeCard(
+                        title: "Absolute Value Match",
+                        goalFunc: { x in abs(x) },
+                        matchFunc: { a, f, p, x in a * abs(x + p) + f }
+                    )
+                }
+                .padding()
+            }
+            .navigationTitle("FunctionCraft Challenges")
+        }
+    }
+}
+
+struct ChallengeCard: View {
+    var title: String
+    var goalFunc: (Double) -> Double
+    var matchFunc: (Double, Double, Double, Double) -> Double
+
+    @State private var a = 1.0
+    @State private var f = 0.0
+    @State private var p = 0.0
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Text(title)
+                .font(.headline)
+
+            ZStack {
+                GraphViewCustom(goalFunc: goalFunc, matchFunc: { x in matchFunc(a, f, p, x) })
+                    .frame(height: 200)
+            }
+
+            SliderRow(title: "a", value: $a, range: -3...3)
+            SliderRow(title: "f", value: $f, range: -3...3)
+            SliderRow(title: "p", value: $p, range: -3...3)
+
+            if checkMatch() {
+                Text("✅ Matched!")
+                    .font(.subheadline)
+                    .foregroundColor(.green)
+            } else {
+                Text("❌ Not Yet")
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
+        .shadow(radius: 4)
+    }
+
+    func checkMatch() -> Bool {
+        for x in stride(from: -2 * Double.pi, through: 2 * Double.pi, by: 0.2) {
+            let goalY = goalFunc(x)
+            let userY = matchFunc(a, f, p, x)
+            if abs(goalY - userY) > 0.25 {
+                return false
+            }
+        }
+        return true
+    }
+}
+
+
+struct GraphViewCustom: View {
+    let goalFunc: (Double) -> Double
+    let matchFunc: (Double) -> Double
+    var xRange: ClosedRange<Double> = -2 * Double.pi...2 * Double.pi
+
+    var body: some View {
+        Canvas { context, size in
+            let midX = size.width / 2
+            let midY = size.height / 2
+            let scaleX = size.width / (xRange.upperBound - xRange.lowerBound)
+            let scaleY = 40.0
+
+            func toPoint(x: Double, y: Double) -> CGPoint {
+                CGPoint(x: midX + (x - (xRange.lowerBound + xRange.upperBound)/2) * scaleX,
+                        y: midY - y * scaleY)
+            }
+
+            var goalPath = Path()
+            var matchPath = Path()
+
+            var first = true
+            for x in stride(from: xRange.lowerBound, through: xRange.upperBound, by: 0.05) {
+                let goalY = goalFunc(x)
+                let matchY = matchFunc(x)
+
+                let gp = toPoint(x: x, y: goalY)
+                let mp = toPoint(x: x, y: matchY)
+
+                if first {
+                    goalPath.move(to: gp)
+                    matchPath.move(to: mp)
+                    first = false
+                } else {
+                    goalPath.addLine(to: gp)
+                    matchPath.addLine(to: mp)
+                }
+            }
+
+            context.stroke(goalPath, with: .color(.green), lineWidth: 2)
+            context.stroke(matchPath, with: .color(.blue), lineWidth: 2)
+        }
+        .background(Color.black.opacity(0.8))
+        .cornerRadius(10)
+    }
+}
+
+struct GraphViewMultiple: View {
+    let functions: [(Double) -> Double]
+    let colors: [Color]
+    var xRange: ClosedRange<Double> = -2 * Double.pi...2 * Double.pi
+
+    var body: some View {
+        Canvas { context, size in
+            let midX = size.width / 2
+            let midY = size.height / 2
+            let scaleX = size.width / (xRange.upperBound - xRange.lowerBound)
+            let scaleY = 40.0
+
+            func toPoint(x: Double, y: Double) -> CGPoint {
+                CGPoint(x: midX + (x - (xRange.lowerBound + xRange.upperBound)/2) * scaleX,
+                        y: midY - y * scaleY)
+            }
+
+            for (index, fn) in functions.enumerated() {
+                var path = Path()
+                var first = true
+                for x in stride(from: xRange.lowerBound, through: xRange.upperBound, by: 0.05) {
+                    let y = fn(x)
+                    let pt = toPoint(x: x, y: y)
+                    if first {
+                        path.move(to: pt)
+                        first = false
+                    } else {
+                        path.addLine(to: pt)
+                    }
+                }
+                context.stroke(path, with: .color(colors[index]), lineWidth: 2)
+            }
+        }
+        .background(Color.black.opacity(0.8))
+        .cornerRadius(10)
+    }
+}
+
+
+struct SliderRow: View {
+    let title: String
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+
+    var body: some View {
+        VStack(alignment: .leading) {
+            Text("\(title): \(String(format: "%.2f", value))")
+                .font(.caption)
+            Slider(value: $value, in: range)
+        }
+    }
+}
+
+
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+    }
+}
